@@ -16,15 +16,7 @@ const setCanvasRectSize = (canvas) => {
   canvas.height = rect.height;
 };
 
-const noop = () => {};
-
-const promise = (func) => {
-  if (typeof Promise === 'function') {
-    return new Promise(func);
-  }
-  func(noop, noop);
-  return null;
-};
+const promise = (func) => new Promise(func);
 
 const fireLocal = (canvas, options, size, done) => {
   const particleCount = prop(options, 'particleCount', onlyPositiveInt);

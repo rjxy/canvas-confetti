@@ -12,27 +12,7 @@ import { prop, onlyPositiveInt, colorsToRgb, randomInt, getOrigin } from './util
 
 const global = typeof window !== 'undefined' ? window : typeof self !== 'undefined' ? self : {};
 
-const canUseWorker = !!(
-  global.Worker &&
-  global.Blob &&
-  global.Promise &&
-  global.OffscreenCanvas &&
-  global.OffscreenCanvasRenderingContext2D &&
-  global.HTMLCanvasElement &&
-  global.HTMLCanvasElement.prototype.transferControlToOffscreen &&
-  global.URL &&
-  global.URL.createObjectURL
-);
-
-const noop = () => {};
-
-const promise = (func) => {
-  if (typeof Promise === 'function') {
-    return new Promise(func);
-  }
-  func(noop, noop);
-  return null;
-};
+const promise = (func) => new Promise(func);
 
 const setCanvasWindowSize = (canvas) => {
   canvas.width = document.documentElement.clientWidth;
@@ -62,7 +42,7 @@ export class ConfettiCannon {
     this._allowResize = !!prop(globalOpts || {}, 'resize');
     this._hasResizeEventRegistered = false;
     this._globalDisableForReducedMotion = prop(globalOpts, 'disableForReducedMotion', Boolean);
-    this._shouldUseWorker = canUseWorker && !!prop(globalOpts || {}, 'useWorker');
+    this._shouldUseWorker = !!prop(globalOpts || {}, 'useWorker');
     this._worker = this._shouldUseWorker ? this._createWorker() : null;
     this._resizer = this._isLibCanvas ? setCanvasWindowSize : setCanvasRectSize;
     this._initialized = (canvas && this._worker) ? !!canvas.__confetti_initialized : false;
