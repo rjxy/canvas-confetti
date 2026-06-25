@@ -180,24 +180,6 @@ export const updateFetti = (context, fetti) => {
     context.ellipse
       ? context.ellipse(fetti.x, fetti.y, Math.abs(x2 - x1) * fetti.ovalScalar, Math.abs(y2 - y1) * fetti.ovalScalar, Math.PI / 10 * fetti.wobble, 0, 2 * Math.PI)
       : ellipse(context, fetti.x, fetti.y, Math.abs(x2 - x1) * fetti.ovalScalar, Math.abs(y2 - y1) * fetti.ovalScalar, Math.PI / 10 * fetti.wobble, 0, 2 * Math.PI);
-  } else if (fetti.shape === 'star') {
-    // 五角星：交替连接外径和内径上的顶点（外径 8*scalar，内径 4*scalar）
-    let rot = Math.PI / 2 * 3;
-    const innerRadius = 4 * fetti.scalar;
-    const outerRadius = 8 * fetti.scalar;
-    let sx = fetti.x, sy = fetti.y;
-    let spikes = 5;
-    const step = Math.PI / spikes;
-    while (spikes--) {
-      sx = fetti.x + Math.cos(rot) * outerRadius;
-      sy = fetti.y + Math.sin(rot) * outerRadius;
-      context.lineTo(sx, sy);
-      rot += step;
-      sx = fetti.x + Math.cos(rot) * innerRadius;
-      sy = fetti.y + Math.sin(rot) * innerRadius;
-      context.lineTo(sx, sy);
-      rot += step;
-    }
   } else {
     // 默认矩形/方形：用四个顶点绘制不规则四边形，模拟纸片翻转效果
     context.moveTo(Math.floor(fetti.x), Math.floor(fetti.y));

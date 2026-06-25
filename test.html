@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>纸屑效果测试</title>
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --sidebar: #16213e;
+      --btn: #0f3460;
+      --btn-hover: #1a5276;
+      --text: #e0e0e0;
+      --border: #2a2a4a;
+    }
+    [data-theme="light"] {
+      --bg: #f5f5f5;
+      --sidebar: #ffffff;
+      --btn: #e3e3e3;
+      --btn-hover: #d0d0d0;
+      --text: #333333;
+      --border: #ddd;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; font-family: system-ui, sans-serif; }
+    body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+    header {
+      height: 48px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px; border-bottom: 1px solid var(--border);
+    }
+    header h1 { font-size: 16px; font-weight: 500; }
+    #theme-toggle {
+      padding: 6px 12px; border: 1px solid var(--border); border-radius: 4px;
+      background: var(--btn); color: var(--text); cursor: pointer;
+    }
+    .main { display: flex; flex: 1; overflow: hidden; }
+    .sidebar {
+      width: 140px; padding: 12px; display: flex; flex-direction: column; gap: 8px;
+      border-right: 1px solid var(--border); background: var(--sidebar); overflow-y: auto;
+    }
+    .sidebar button {
+      padding: 10px 8px; border: none; border-radius: 6px;
+      background: var(--btn); color: var(--text); cursor: pointer;
+      font-size: 13px; transition: background 0.15s;
+    }
+    .sidebar button:hover { background: var(--btn-hover); }
+    .sidebar button.active { background: var(--btn-hover); font-weight: 600; }
+    .canvas-area { flex: 1; position: relative; }
+    #confetti-canvas { width: 100%; height: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>纸屑效果测试</h1>
+    <button id="theme-toggle">切换主题</button>
+  </header>
+  <div class="main">
+    <div class="sidebar">
+      <button data-effect="cannon">基础发射</button>
+      <button data-effect="random">随机方向</button>
+      <button data-effect="realistic">拟真效果</button>
+      <button data-effect="fireworks">烟花</button>
+      <button data-effect="snow">下雪</button>
+      <button data-effect="continuous">持续发射</button>
+      <button data-effect="paths">自定义形状</button>
+      <button data-effect="emoji">Emoji</button>
+    </div>
+    <div class="canvas-area">
+      <canvas id="confetti-canvas"></canvas>
+    </div>
+  </div>
+
+  <script type="module">
+    import confetti from './src/confetti.js';
+
+    const canvas = document.getElementById('confetti-canvas');
+    const myConfetti = confetti.create(canvas, { resize: true });
+
+    // 主题切换
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+      const body = document.body;
+      body.dataset.theme = body.dataset.theme === 'light' ? '' : 'light';
+    });
+
+    const effects = {
+      cannon() {
+        myConfetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+      },
+      random() {
+        myConfetti({
+          angle: Math.random() * 70 + 55,
+          spread: Math.random() * 20 + 50,
+          particleCount: Math.random() * 50 + 50,
+          origin: { y: 0.6 }
+        });
+      },
+      realistic() {
+        const count = 200;
+        const defaults = { origin: { y: 0.7 } };
+        const fire = (ratio, opts) => myConfetti({ ...defaults, ...opts, particleCount: Math.floor(count * ratio) });
+        fire(0.25, { spread: 26, startVelocity: 55 });
+        fire(0.2, { spread: 60 });
+        fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+        fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+        fire(0.1, { spread: 120, startVelocity: 45 });
+      },
+      fireworks() {
+        const duration = 8000;
+        const end = Date.now() + duration;
+        const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+        const interval = setInterval(() => {
+          if (Date.now() > end) return clearInterval(interval);
+          const pc = 50 * ((end - Date.now()) / duration);
+          myConfetti({ ...defaults, particleCount: pc, origin: { x: Math.random() * 0.6 + 0.2, y: Math.random() - 0.2 } });
+        }, 250);
+      },
+      snow() {
+        const duration = 8000;
+        const end = Date.now() + duration;
+        let skew = 1;
+        (function frame() {
+          const ticks = Math.max(200, 500 * ((end - Date.now()) / duration));
+          skew = Math.max(0.8, skew - 0.001);
+          myConfetti({
+            particleCount: 1, startVelocity: 0, ticks,
+            origin: { x: Math.random(), y: (Math.random() * skew) - 0.2 },
+            colors: ['#ffffff'], shapes: ['circle'],
+            gravity: 0.4 + Math.random() * 0.2, scalar: 0.4 + Math.random() * 0.6, drift: Math.random() * 0.8 - 0.4
+          });
+          if (Date.now() < end) requestAnimationFrame(frame);
+        })();
+      },
+      continuous() {
+        const end = Date.now() + 8000;
+        const colors = ['#bb0000', '#ffffff'];
+        (function frame() {
+          myConfetti({ particleCount: 2, angle: 60, spread: 55, origin: { x: 0 }, colors });
+          myConfetti({ particleCount: 2, angle: 120, spread: 55, origin: { x: 1 }, colors });
+          if (Date.now() < end) requestAnimationFrame(frame);
+        })();
+      },
+      paths() {
+        const pumpkin = confetti.shapeFromPath({ path: 'M449.4 142c-5 0-10 .3-15 1a183 183 0 0 0-66.9-19.1V87.5a17.5 17.5 0 1 0-35 0v36.4a183 183 0 0 0-67 19c-4.9-.6-9.9-1-14.8-1C170.3 142 105 219.6 105 315s65.3 173 145.7 173c5 0 10-.3 14.8-1a184.7 184.7 0 0 0 169 0c4.9.7 9.9 1 14.9 1 80.3 0 145.6-77.6 145.6-173s-65.3-173-145.7-173z', matrix: [0.02, 0, 0, 0.02, -7.17, -5.9] });
+        const heart = confetti.shapeFromPath({ path: 'M167 72c19,-38 37,-56 75,-56 42,0 76,33 76,75 0,76 -76,151 -151,227 -76,-76 -151,-151 -151,-227 0,-42 33,-75 75,-75 38,0 57,18 76,56z', matrix: [0.033, 0, 0, 0.033, -5.566, -5.533] });
+        const defaults = { scalar: 2, spread: 180, particleCount: 30, origin: { y: -0.1 }, startVelocity: -35 };
+        myConfetti({ ...defaults, shapes: [pumpkin], colors: ['#ff9a00', '#ff7400', '#ff4d00'] });
+        myConfetti({ ...defaults, shapes: [heart], colors: ['#f93963', '#a10864', '#ee0b93'] });
+      },
+      emoji() {
+        const scalar = 2;
+        const unicorn = confetti.shapeFromText({ text: '🦄', scalar });
+        const defaults = { spread: 360, ticks: 60, gravity: 0, decay: 0.96, startVelocity: 20, shapes: [unicorn], scalar };
+        const shoot = () => {
+          myConfetti({ ...defaults, particleCount: 30 });
+          myConfetti({ ...defaults, particleCount: 5, flat: true });
+          myConfetti({ ...defaults, particleCount: 15, scalar: scalar / 2, shapes: ['circle'] });
+        };
+        setTimeout(shoot, 0);
+        setTimeout(shoot, 100);
+        setTimeout(shoot, 200);
+      }
+    };
+
+    document.querySelector('.sidebar').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-effect]');
+      if (!btn) return;
+      myConfetti.reset();
+      document.querySelectorAll('.sidebar button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      effects[btn.dataset.effect]();
+    });
+  </script>
+</body>
+</html>
