@@ -181,8 +181,8 @@ export class ConfettiCannon {
 
   /**
    * 公开的发射入口，协调整个发射流程：
-   * 1. 检查 reduced-motion 偏好 → 2. 确保 canvas 存在 → 3. 初始化尺寸
-   * 4. 注册 resize 监听 → 5. 委派给 Worker 或本地渲染
+   * 1. 确保 canvas 存在 → 2. 初始化尺寸
+   * 3. 注册 resize 监听 → 4. 委派给 Worker 或本地渲染
    */
   fire(options) {
     const zIndex = prop(options, 'zIndex', Number);
