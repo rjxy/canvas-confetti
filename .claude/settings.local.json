@@ -8,7 +8,12 @@
       "Bash(lsof -ti:9001)",
       "Bash(xargs kill -9)",
       "Bash(xargs ls -la)",
-      "Bash(npx eslint *)"
+      "Bash(npx eslint *)",
+      "WebFetch(domain:www.awwwards.com)",
+      "WebFetch(domain:juejin.cn)",
+      "WebFetch(domain:www.zhihu.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:css-tricks.com)"
     ]
   }
 }

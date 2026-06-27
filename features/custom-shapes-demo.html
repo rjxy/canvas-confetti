@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>shapeFromPath & shapeFromText 用法演示</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; padding: 24px; background: #1a1a2e; color: #eee; }
+    h1 { margin-bottom: 16px; font-size: 1.4rem; }
+    h2 { margin: 24px 0 8px; font-size: 1.1rem; color: #7fdbca; }
+    .section { background: #16213e; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    button { padding: 8px 16px; margin: 4px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+    button:hover { opacity: 0.85; }
+    .btn-path { background: #e94560; color: #fff; }
+    .btn-text { background: #0f3460; color: #fff; }
+    .btn-mix { background: #533483; color: #fff; }
+    pre { background: #0d1117; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 13px; margin: 8px 0; color: #c9d1d9; }
+    code { font-family: 'Fira Code', monospace; }
+  </style>
+</head>
+<body>
+
+<h1>shapeFromPath & shapeFromText 自定义形状演示</h1>
+
+<!-- ==================== shapeFromPath 部分 ==================== -->
+<div class="section">
+  <h2>1. shapeFromPath — 用 SVG path 定义形状</h2>
+  <p>将任意 SVG path 字符串转为纸屑形状。适合星形、心形、闪电等自定义图形。</p>
+
+  <h2>示例 A：心形（自动计算 matrix）</h2>
+  <pre><code>// 只传 path 字符串，内部会自动扫描边界框并生成缩放矩阵
+// 注意：自动计算会遍历 1000x1000 像素点，首次调用较慢，建议缓存结果
+const heart = confetti.shapeFromPath({
+  path: 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 ' +
+        'C2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09' +
+        'C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5' +
+        'c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'
+});
+
+confetti({ shapes: [heart], particleCount: 50 });</code></pre>
+  <button class="btn-path" onclick="fireHeart()">发射心形纸屑</button>
+
+  <h2>示例 B：星形（手动提供 matrix，性能更优）</h2>
+  <pre><code>// 手动计算好 matrix: [scaleX, 0, 0, scaleY, translateX, translateY]
+// 避免了自动扫描的开销，适合需要反复调用的场景
+const star = confetti.shapeFromPath({
+  path: 'M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 ' +
+        'L12 18.77 5.82 22 7 14.14 2 9.27l6.91-1.01L12 2z',
+  matrix: [0.4, 0, 0, 0.4, -4.8, -4.8]  // 预计算的缩放+居中矩阵
+});
+
+confetti({ shapes: [star], particleCount: 80, spread: 160 });</code></pre>
+  <button class="btn-path" onclick="fireStar()">发射星形纸屑</button>
+</div>
+
+<!-- ==================== shapeFromText 部分 ==================== -->
+<div class="section">
+  <h2>2. shapeFromText — 用文本/Emoji 作为形状</h2>
+  <p>将文本光栅化为 bitmap，支持 emoji、文字、符号。可控制缩放和颜色。</p>
+
+  <h2>示例 C：Emoji 纸屑（最简用法）</h2>
+  <pre><code>// 直接传字符串，使用默认参数
+const snowflake = confetti.shapeFromText({ text: '❄️', scalar: 2 });
+const tree = confetti.shapeFromText({ text: '🎄', scalar: 2 });
+
+confetti({
+  shapes: [snowflake, tree],
+  particleCount: 30,
+  spread: 120,
+  scalar: 2,        // scalar 要与 shapeFromText 的 scalar 匹配
+  gravity: 0.5      // 降低重力让 emoji 飘落更慢
+});</code></pre>
+  <button class="btn-text" onclick="fireEmoji()">发射 Emoji 纸屑</button>
+
+  <h2>示例 D：彩色文字纸屑</h2>
+  <pre><code>// 用 color 参数控制文字颜色（对 emoji 通常无效，对普通文字有效）
+const cool = confetti.shapeFromText({ text: 'COOL', scalar: 3, color: '#ff6b6b' });
+const nice = confetti.shapeFromText({ text: 'NICE', scalar: 3, color: '#4ecdc4' });
+const wow = confetti.shapeFromText({ text: 'WOW', scalar: 3, color: '#ffe66d' });
+
+confetti({
+  shapes: [cool, nice, wow],
+  particleCount: 20,
+  spread: 140,
+  scalar: 3,
+  gravity: 0.8,
+  ticks: 200        // 延长动画持续帧数
+});</code></pre>
+  <button class="btn-text" onclick="fireText()">发射文字纸屑</button>
+
+  <h2>示例 E：自定义字体</h2>
+  <pre><code>// fontFamily 可以指定任意已加载的字体
+const kanji = confetti.shapeFromText({
+  text: '祝',
+  scalar: 4,
+  color: '#e74c3c',
+  fontFamily: 'serif'   // 使用衬线字体渲染汉字
+});
+
+confetti({ shapes: [kanji], particleCount: 15, scalar: 4, spread: 90 });</code></pre>
+  <button class="btn-text" onclick="fireKanji()">发射汉字纸屑</button>
+</div>
+
+<!-- ==================== 混合使用 ==================== -->
+<div class="section">
+  <h2>3. 混合使用 — Path + Text + 内置形状</h2>
+  <pre><code>// shapes 数组可以混合不同类型的形状
+const heart = confetti.shapeFromPath({
+  path: 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 ...'
+});
+const fire = confetti.shapeFromText({ text: '🔥', scalar: 2 });
+
+confetti({
+  shapes: [heart, fire, 'circle'],  // path + bitmap + 内置形状混用
+  particleCount: 60,
+  spread: 180,
+  origin: { y: 0.7 },
+  scalar: 2
+});</code></pre>
+  <button class="btn-mix" onclick="fireMix()">混合发射</button>
+</div>
+
+<!-- ==================== 脚本 ==================== -->
+<script type="module">
+import confetti from '../dist/confetti.module.mjs';
+
+// 挂到 window 上供按钮 onclick 使用
+window.confetti = confetti;
+
+// --- shapeFromPath 示例 ---
+window.fireHeart = function() {
+  var heart = confetti.shapeFromPath({
+    path: 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'
+  });
+  confetti({ shapes: [heart], particleCount: 50, spread: 100, origin: { y: 0.6 } });
+};
+
+window.fireStar = function() {
+  var star = confetti.shapeFromPath({
+    path: 'M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22L12 18.77 5.82 22 7 14.14 2 9.27l6.91-1.01L12 2z',
+    matrix: [0.4, 0, 0, 0.4, -4.8, -4.8]
+  });
+  confetti({ shapes: [star], particleCount: 80, spread: 160, origin: { y: 0.6 } });
+};
+
+// --- shapeFromText 示例 ---
+window.fireEmoji = function() {
+  var scalar = 2;
+  var snowflake = confetti.shapeFromText({ text: '❄️', scalar: scalar });
+  var tree = confetti.shapeFromText({ text: '🎄', scalar: scalar });
+  confetti({ shapes: [snowflake, tree], particleCount: 30, spread: 120, scalar: scalar, gravity: 0.5, origin: { y: 0.6 } });
+};
+
+window.fireText = function() {
+  var scalar = 3;
+  var cool = confetti.shapeFromText({ text: 'COOL', scalar: scalar, color: '#ff6b6b' });
+  var nice = confetti.shapeFromText({ text: 'NICE', scalar: scalar, color: '#4ecdc4' });
+  var wow = confetti.shapeFromText({ text: 'WOW', scalar: scalar, color: '#ffe66d' });
+  confetti({ shapes: [cool, nice, wow], particleCount: 20, spread: 140, scalar: scalar, gravity: 0.8, ticks: 200, origin: { y: 0.6 } });
+};
+
+window.fireKanji = function() {
+  var scalar = 4;
+  var zhu = confetti.shapeFromText({ text: '祝', scalar: scalar, color: '#e74c3c', fontFamily: 'serif' });
+  confetti({ shapes: [zhu], particleCount: 15, scalar: scalar, spread: 90, origin: { y: 0.6 } });
+};
+
+// --- 混合示例 ---
+window.fireMix = function() {
+  var scalar = 2;
+  var heart = confetti.shapeFromPath({
+    path: 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'
+  });
+  var fire = confetti.shapeFromText({ text: '🔥', scalar: scalar });
+  confetti({ shapes: [heart, fire, 'circle'], particleCount: 60, spread: 180, origin: { y: 0.7 }, scalar: scalar });
+};
+</script>
+</body>
+</html>
