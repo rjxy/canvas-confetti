@@ -46,12 +46,10 @@ export class ConfettiCannon {
   #canvas;               // 目标 canvas 元素
   #allowResize;          // 是否监听窗口 resize 并自动调整 canvas 尺寸
   #hasResizeEventRegistered = false;
-  #globalDisableForReducedMotion;  // 全局减少动画偏好开关
   #shouldUseWorker;      // 是否使用 Worker 离屏渲染
   #worker;               // Worker 实例（或 null 表示回退到主线程）
   #resizer;              // canvas 尺寸策略函数（setCanvasWindowSize 或 setCanvasRectSize）
   #initialized;          // 是否已完成初始化（Worker 的 transferControlToOffscreen 只能执行一次）
-  #preferLessMotion;     // 用户系统是否启用了"减少动画"偏好
   #animationObj = null;  // 当前活跃的 Animation 实例
 
   /**
@@ -59,20 +57,17 @@ export class ConfettiCannon {
    * @param {Object} globalOpts - 全局配置
    * @param {boolean} globalOpts.resize - 是否监听 resize 自动调整尺寸
    * @param {boolean} globalOpts.useWorker - 是否使用 Worker 离屏渲染
-   * @param {boolean} globalOpts.disableForReducedMotion - 是否尊重系统减少动画偏好
    */
   constructor(canvas, globalOpts) {
     this.#isLibCanvas = !canvas;
     this.#canvas = canvas;
     this.#allowResize = !!prop(globalOpts || {}, 'resize');
-    this.#globalDisableForReducedMotion = prop(globalOpts, 'disableForReducedMotion', Boolean);
     this.#shouldUseWorker = !!prop(globalOpts || {}, 'useWorker');
     this.#worker = this.#shouldUseWorker ? this.#createWorker() : null;
     // 根据 canvas 来源选择尺寸策略：自建用视口尺寸，用户提供用元素尺寸
     this.#resizer = this.#isLibCanvas ? setCanvasWindowSize : setCanvasRectSize;
     // 避免同一 canvas 被多次 transferControlToOffscreen（不可逆操作）
     this.#initialized = (canvas && this.#worker) ? !!canvas.__confetti_initialized : false;
-    this.#preferLessMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion)').matches;
   }
 
   // 创建 Worker，失败时静默回退到主线程渲染
@@ -190,13 +185,7 @@ export class ConfettiCannon {
    * 4. 注册 resize 监听 → 5. 委派给 Worker 或本地渲染
    */
   fire(options) {
-    const disableForReducedMotion = this.#globalDisableForReducedMotion || prop(options, 'disableForReducedMotion', Boolean);
     const zIndex = prop(options, 'zIndex', Number);
-
-    // 尊重用户系统级减少动画偏好，直接返回 resolved Promise
-    if (disableForReducedMotion && this.#preferLessMotion) {
-      return promise((resolve) => resolve());
-    }
 
     // canvas 生命周期管理：复用当前动画的 canvas，或创建新的全屏 canvas
     if (this.#isLibCanvas && this.#animationObj) {
@@ -235,7 +224,6 @@ export class ConfettiCannon {
       size.width = size.height = null;
     };
 
-    // 动画结束回调：清理 resize 监听、移除自建 canvas、重置状态
     const done = () => {
       this.#animationObj = null;
       if (this.#allowResize) {

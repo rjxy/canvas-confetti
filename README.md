@@ -21,9 +21,6 @@ npm run dev
 
 <!-- PLACEHOLDER_REST -->
 
-## 减少动画
-
-并非所有用户都喜欢动画效果。可以通过 `disableForReducedMotion` 选项来尊重用户的 [prefers-reduced-motion](https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion) 系统设置。
 
 ## API
 
@@ -53,7 +50,6 @@ npm run dev
 | `shapes` | Array | `['square','circle']` | 形状：`square`、`circle`、`star` 或自定义 |
 | `scalar` | Number | 1 | 粒子缩放比例 |
 | `zIndex` | Integer | 100 | canvas 的 z-index |
-| `disableForReducedMotion` | Boolean | false | 为偏好减少动画的用户禁用效果 |
 
 ### `confetti.shapeFromPath({ path, matrix? })` → `Shape`
 
@@ -99,7 +95,6 @@ myConfetti({ particleCount: 100, spread: 160 });
 全局选项：
 - `resize` _(Boolean, 默认 false)_ — 是否自动调整 canvas 尺寸
 - `useWorker` _(Boolean, 默认 false)_ — 是否使用 Web Worker 渲染（不阻塞主线程）
-- `disableForReducedMotion` _(Boolean, 默认 false)_ — 全局禁用减少动画
 
 **注意：使用 `useWorker: true` 后，canvas 控制权会转移给 Worker，主线程不能再操作该 canvas。**
 

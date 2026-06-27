@@ -21,7 +21,6 @@ export const defaults = {
     '#26ccff', '#a25afd', '#ff5e7e', '#88ff5a',
     '#fcff42', '#ffa62d', '#ff36ff'
   ],
-  disableForReducedMotion: false,
   scalar: 1
 };
 

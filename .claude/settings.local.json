@@ -19,7 +19,13 @@
       "Bash(pnpm add *)",
       "Bash(npx ava *)",
       "Bash(curl *)",
-      "Bash(awk '{print $6, $7, $8}')"
+      "Bash(awk '{print $6, $7, $8}')",
+      "Bash(lsof -iTCP -sTCP:LISTEN -n -P)",
+      "Bash(ps *)",
+      "Bash(/bin/ps -o command= -p 17134)",
+      "Bash(/usr/sbin/lsof -p 17134)",
+      "Bash(kill 17134)",
+      "Bash(/usr/sbin/lsof -iTCP:9001 -sTCP:LISTEN -n -P)"
     ]
   }
 }
