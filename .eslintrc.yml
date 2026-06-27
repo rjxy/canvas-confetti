@@ -1,8 +1,11 @@
 extends:
   - eslint:recommended
 env:
-  es6: false
+  es6: true
   browser: true
   node: true
+parserOptions:
+  ecmaVersion: 2022
+  sourceType: module
 rules:
   semi: [ error, always ]
