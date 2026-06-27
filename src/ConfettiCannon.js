@@ -5,15 +5,16 @@
  * - 处理发射(fire)、重置(reset)、窗口 resize
  * - 支持 Worker 离屏渲染，不支持时自动回退到主线程
  */
-import { animate } from './animator.js';
-import { randomPhysics } from './Particle.js';
+import { Animation } from './animator.js';
+import { Particle } from './Particle.js';
 import { bitmapMapper } from './bitmap-mapper.js';
 import { prop, onlyPositiveInt, colorsToRgb, randomInt, getOrigin } from './utils.js';
+import { workerUrl } from './worker.js';
 
 // 兼容浏览器主线程和 Worker 环境的全局对象引用
 const global = typeof window !== 'undefined' ? window : typeof self !== 'undefined' ? self : {};
 
-// Promise 工厂，传入 animate 等模块作为 Promise 构造的统一入口
+// Promise 工厂，传入 Animation 等模块作为 Promise 构造的统一入口
 const promise = (func) => new Promise(func);
 
 // 将 canvas 尺寸设置为整个视口（用于库自动创建的全屏 canvas）
@@ -41,32 +42,44 @@ const getCanvas = (zIndex) => {
 };
 
 export class ConfettiCannon {
+  #isLibCanvas;          // 是否由库自动管理 canvas 生命周期（创建/销毁）
+  #canvas;               // 目标 canvas 元素
+  #allowResize;          // 是否监听窗口 resize 并自动调整 canvas 尺寸
+  #hasResizeEventRegistered = false;
+  #globalDisableForReducedMotion;  // 全局减少动画偏好开关
+  #shouldUseWorker;      // 是否使用 Worker 离屏渲染
+  #worker;               // Worker 实例（或 null 表示回退到主线程）
+  #resizer;              // canvas 尺寸策略函数（setCanvasWindowSize 或 setCanvasRectSize）
+  #initialized;          // 是否已完成初始化（Worker 的 transferControlToOffscreen 只能执行一次）
+  #preferLessMotion;     // 用户系统是否启用了"减少动画"偏好
+  #animationObj = null;  // 当前活跃的 Animation 实例
+
   /**
    * @param {HTMLCanvasElement|null} canvas - 目标 canvas，传 null 则由库自动创建全屏 canvas
-   * @param {Object} globalOpts - 全局配置：resize、useWorker、disableForReducedMotion
+   * @param {Object} globalOpts - 全局配置
+   * @param {boolean} globalOpts.resize - 是否监听 resize 自动调整尺寸
+   * @param {boolean} globalOpts.useWorker - 是否使用 Worker 离屏渲染
+   * @param {boolean} globalOpts.disableForReducedMotion - 是否尊重系统减少动画偏好
    */
   constructor(canvas, globalOpts) {
-    // 是否由库自动管理 canvas 生命周期（创建/销毁）
-    this._isLibCanvas = !canvas;
-    this._canvas = canvas;
-    this._allowResize = !!prop(globalOpts || {}, 'resize');
-    this._hasResizeEventRegistered = false;
-    this._globalDisableForReducedMotion = prop(globalOpts, 'disableForReducedMotion', Boolean);
-    this._shouldUseWorker = !!prop(globalOpts || {}, 'useWorker');
-    this._worker = this._shouldUseWorker ? this._createWorker() : null;
+    this.#isLibCanvas = !canvas;
+    this.#canvas = canvas;
+    this.#allowResize = !!prop(globalOpts || {}, 'resize');
+    this.#globalDisableForReducedMotion = prop(globalOpts, 'disableForReducedMotion', Boolean);
+    this.#shouldUseWorker = !!prop(globalOpts || {}, 'useWorker');
+    this.#worker = this.#shouldUseWorker ? this.#createWorker() : null;
     // 根据 canvas 来源选择尺寸策略：自建用视口尺寸，用户提供用元素尺寸
-    this._resizer = this._isLibCanvas ? setCanvasWindowSize : setCanvasRectSize;
+    this.#resizer = this.#isLibCanvas ? setCanvasWindowSize : setCanvasRectSize;
     // 避免同一 canvas 被多次 transferControlToOffscreen（不可逆操作）
-    this._initialized = (canvas && this._worker) ? !!canvas.__confetti_initialized : false;
-    this._preferLessMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion)').matches;
-    this._animationObj = null;
+    this.#initialized = (canvas && this.#worker) ? !!canvas.__confetti_initialized : false;
+    this.#preferLessMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion)').matches;
   }
 
-  // 创建 module Worker，失败时静默回退到主线程渲染
-  _createWorker() {
+  // 创建 Worker，失败时静默回退到主线程渲染
+  #createWorker() {
     try {
-      const worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
-      this._decorateWorker(worker);
+      const worker = new Worker(workerUrl);
+      this.#decorateWorker(worker);
       return worker;
     } catch (e) {
       if (typeof console !== 'undefined' && typeof console.warn === 'function') {
@@ -81,7 +94,7 @@ export class ConfettiCannon {
    * 核心设计：用随机 ID 作为回调标识，实现 Promise 风格的异步调用
    * 当已有动画运行时（prom 不为 null），新 fire 只发送 options 追加粒子，复用同一 Promise
    */
-  _decorateWorker(worker) {
+  #decorateWorker(worker) {
     // prom: 当前动画的 Promise，非 null 表示动画进行中
     let prom = null;
     // resolves: 按 ID 存储的手动 resolve 回调，用于 reset 时立即结束所有等待中的 Promise
@@ -134,7 +147,7 @@ export class ConfettiCannon {
    * 主线程本地发射：解析配置 → 生成粒子数组 → 启动/追加动画
    * 如果已有动画运行中则追加粒子（addFettis），否则创建新动画循环
    */
-  _fireLocal(options, size, done) {
+  #fireLocal(options, size, done) {
     const particleCount = prop(options, 'particleCount', onlyPositiveInt);
     const angle = prop(options, 'angle', Number);
     const spread = prop(options, 'spread', Number);
@@ -149,13 +162,13 @@ export class ConfettiCannon {
     const flat = !!prop(options, 'flat');
     const origin = getOrigin(options);
 
-    const startX = this._canvas.width * origin.x;
-    const startY = this._canvas.height * origin.y;
-    const fettis = [];
+    const startX = this.#canvas.width * origin.x;
+    const startY = this.#canvas.height * origin.y;
+    const particles = [];
     let temp = particleCount;
 
     while (temp--) {
-      fettis.push(randomPhysics({
+      particles.push(new Particle({
         x: startX, y: startY, angle, spread, startVelocity,
         color: colors[temp % colors.length],
         shape: shapes[randomInt(0, shapes.length)],
@@ -163,12 +176,12 @@ export class ConfettiCannon {
       }));
     }
 
-    if (this._animationObj) {
-      return this._animationObj.addFettis(fettis);
+    if (this.#animationObj) {
+      return this.#animationObj.addFettis(particles);
     }
 
-    this._animationObj = animate(this._canvas, fettis, this._resizer, size, done, false, null, promise);
-    return this._animationObj.promise;
+    this.#animationObj = new Animation(this.#canvas, particles, this.#resizer, size, done, false, null, promise);
+    return this.#animationObj.promise;
   }
 
   /**
@@ -177,46 +190,46 @@ export class ConfettiCannon {
    * 4. 注册 resize 监听 → 5. 委派给 Worker 或本地渲染
    */
   fire(options) {
-    const disableForReducedMotion = this._globalDisableForReducedMotion || prop(options, 'disableForReducedMotion', Boolean);
+    const disableForReducedMotion = this.#globalDisableForReducedMotion || prop(options, 'disableForReducedMotion', Boolean);
     const zIndex = prop(options, 'zIndex', Number);
 
     // 尊重用户系统级减少动画偏好，直接返回 resolved Promise
-    if (disableForReducedMotion && this._preferLessMotion) {
+    if (disableForReducedMotion && this.#preferLessMotion) {
       return promise((resolve) => resolve());
     }
 
     // canvas 生命周期管理：复用当前动画的 canvas，或创建新的全屏 canvas
-    if (this._isLibCanvas && this._animationObj) {
-      this._canvas = this._animationObj.canvas;
-    } else if (this._isLibCanvas && !this._canvas) {
-      this._canvas = getCanvas(zIndex);
-      document.body.appendChild(this._canvas);
+    if (this.#isLibCanvas && this.#animationObj) {
+      this.#canvas = this.#animationObj.canvas;
+    } else if (this.#isLibCanvas && !this.#canvas) {
+      this.#canvas = getCanvas(zIndex);
+      document.body.appendChild(this.#canvas);
     }
 
-    if (this._allowResize && !this._initialized) {
-      this._resizer(this._canvas);
+    if (this.#allowResize && !this.#initialized) {
+      this.#resizer(this.#canvas);
     }
 
-    const size = { width: this._canvas.width, height: this._canvas.height };
+    const size = { width: this.#canvas.width, height: this.#canvas.height };
 
     // Worker 首次使用时将 canvas 控制权转移（不可逆，只能执行一次）
-    if (this._worker && !this._initialized) {
-      this._worker.init(this._canvas);
+    if (this.#worker && !this.#initialized) {
+      this.#worker.init(this.#canvas);
     }
 
-    this._initialized = true;
-    if (this._worker) {
-      this._canvas.__confetti_initialized = true;
+    this.#initialized = true;
+    if (this.#worker) {
+      this.#canvas.__confetti_initialized = true;
     }
 
     // resize 回调：Worker 模式下通过 postMessage 同步新尺寸，本地模式下置空触发下帧重新测量
     const onResize = () => {
-      if (this._worker) {
+      if (this.#worker) {
         const obj = {
-          getBoundingClientRect: () => !this._isLibCanvas ? this._canvas.getBoundingClientRect() : undefined
+          getBoundingClientRect: () => !this.#isLibCanvas ? this.#canvas.getBoundingClientRect() : undefined
         };
-        this._resizer(obj);
-        this._worker.postMessage({ resize: { width: obj.width, height: obj.height } });
+        this.#resizer(obj);
+        this.#worker.postMessage({ resize: { width: obj.width, height: obj.height } });
         return;
       }
       size.width = size.height = null;
@@ -224,34 +237,34 @@ export class ConfettiCannon {
 
     // 动画结束回调：清理 resize 监听、移除自建 canvas、重置状态
     const done = () => {
-      this._animationObj = null;
-      if (this._allowResize) {
-        this._hasResizeEventRegistered = false;
+      this.#animationObj = null;
+      if (this.#allowResize) {
+        this.#hasResizeEventRegistered = false;
         global.removeEventListener('resize', onResize);
       }
-      if (this._isLibCanvas && this._canvas) {
-        if (document.body.contains(this._canvas)) {
-          document.body.removeChild(this._canvas);
+      if (this.#isLibCanvas && this.#canvas) {
+        if (document.body.contains(this.#canvas)) {
+          document.body.removeChild(this.#canvas);
         }
-        this._canvas = null;
-        this._initialized = false;
+        this.#canvas = null;
+        this.#initialized = false;
       }
     };
 
-    if (this._allowResize && !this._hasResizeEventRegistered) {
-      this._hasResizeEventRegistered = true;
+    if (this.#allowResize && !this.#hasResizeEventRegistered) {
+      this.#hasResizeEventRegistered = true;
       global.addEventListener('resize', onResize, false);
     }
 
-    if (this._worker) {
-      return this._worker.fire(options, size, done);
+    if (this.#worker) {
+      return this.#worker.fire(options, size, done);
     }
 
-    return this._fireLocal(options, size, done);
+    return this.#fireLocal(options, size, done);
   }
 
   reset() {
-    if (this._worker) this._worker.reset();
-    if (this._animationObj) this._animationObj.reset();
+    if (this.#worker) this.#worker.reset();
+    if (this.#animationObj) this.#animationObj.reset();
   }
 }

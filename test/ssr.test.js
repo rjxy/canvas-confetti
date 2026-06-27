@@ -1,21 +1,20 @@
-import vm from 'vm';
-import path from 'path';
-import fs from 'fs';
-import { promisify } from 'util';
+const vm = require('vm');
+const path = require('path');
+const fs = require('fs');
+const test = require('ava');
 
-import test from 'ava';
-import root from 'rootrequire';
-
-import pkg from '../package.json';
-
-test('can be evaluated in a node vm', async t => {
-  const file = await promisify(fs.readFile)(path.resolve(root, pkg.main), 'utf8');
+test('can be evaluated in a node vm', t => {
+  const file = fs.readFileSync(path.resolve(__dirname, '..', 'dist/confetti.browser.js'), 'utf8');
   t.is(typeof file, 'string');
 
-  const context = vm.createContext({ module: {} });
+  const context = vm.createContext({
+    window: {},
+    URL: Object.assign(class {}, { createObjectURL: () => '' }),
+    Blob: class {},
+    Worker: class {}
+  });
   vm.runInContext(file, context);
 
-  t.is(typeof context.module.exports, 'function');
-  t.is(typeof context.module.exports.create, 'function');
-  t.is(typeof context.module.exports.reset, 'function');
+  t.is(typeof context.window.confetti, 'function');
+  t.is(typeof context.window.confetti.create, 'function');
 });
