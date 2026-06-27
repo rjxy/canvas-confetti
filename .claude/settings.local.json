@@ -25,7 +25,9 @@
       "Bash(/bin/ps -o command= -p 17134)",
       "Bash(/usr/sbin/lsof -p 17134)",
       "Bash(kill 17134)",
-      "Bash(/usr/sbin/lsof -iTCP:9001 -sTCP:LISTEN -n -P)"
+      "Bash(/usr/sbin/lsof -iTCP:9001 -sTCP:LISTEN -n -P)",
+      "Bash(echo \"=== EXIT: $? ===\")",
+      "Bash(xargs -I{} echo \"workerUrl 导出数量: {}\")"
     ]
   }
 }
