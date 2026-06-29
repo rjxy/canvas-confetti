@@ -77,9 +77,6 @@ export class ConfettiCannon {
       this.#decorateWorker(worker);
       return worker;
     } catch (e) {
-      if (typeof console !== 'undefined' && typeof console.warn === 'function') {
-        console.warn('Could not load worker', e);
-      }
       return null;
     }
   }
