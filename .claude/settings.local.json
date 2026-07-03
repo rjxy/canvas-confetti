@@ -27,7 +27,13 @@
       "Bash(kill 17134)",
       "Bash(/usr/sbin/lsof -iTCP:9001 -sTCP:LISTEN -n -P)",
       "Bash(echo \"=== EXIT: $? ===\")",
-      "Bash(xargs -I{} echo \"workerUrl 导出数量: {}\")"
+      "Bash(xargs -I{} echo \"workerUrl 导出数量: {}\")",
+      "Bash(apply_patch *)",
+      "Bash(rg *)",
+      "Bash(git remote *)",
+      "Bash(git push *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
