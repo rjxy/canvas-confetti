@@ -36,6 +36,7 @@ const getCanvas = (zIndex) => {
   canvas.style.position = 'fixed';
   canvas.style.top = '0px';
   canvas.style.left = '0px';
+  // 防止鼠标事件干扰（全屏覆盖+不透明）
   canvas.style.pointerEvents = 'none';
   canvas.style.zIndex = zIndex;
   return canvas;
@@ -128,7 +129,9 @@ export class ConfettiCannon {
       }
     };
 
-    // init: 将 canvas 控制权转移给 Worker（transferControlToOffscreen 不可逆）
+    // init: 将 canvas 绘图控制权转移给 Worker。
+    // transferControlToOffscreen 是一次性的控制权移交，用来保证同一块 canvas
+    // 不会被主线程和 Worker 等多个执行上下文同时绘制，避免像素状态竞争。
     worker.init = (canvas) => {
       const offscreen = canvas.transferControlToOffscreen();
       worker.postMessage({ canvas: offscreen }, [offscreen]);
@@ -198,7 +201,7 @@ export class ConfettiCannon {
 
     const size = { width: this.#canvas.width, height: this.#canvas.height };
 
-    // Worker 首次使用时将 canvas 控制权转移（不可逆，只能执行一次）
+    // Worker 首次使用时转移 canvas 控制权，之后由 #initialized 防止重复移交。
     if (this.#worker && !this.#initialized) {
       this.#worker.init(this.#canvas);
     }
