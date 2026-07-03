@@ -99,6 +99,7 @@ export class Animation {
           this.#size.width = this.#canvas.width;
           this.#size.height = this.#canvas.height;
         }
+        // 清除当前 canvas 画布上的全部已绘制像素
         this.#context.clearRect(0, 0, this.#size.width, this.#size.height);
         this.#particles = this.#particles.filter((p) => p.update(this.#context));
         if (this.#particles.length) {

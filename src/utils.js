@@ -12,6 +12,7 @@ export const defaults = {
   decay: 0.9,
   gravity: 1,
   drift: 0,
+  // 默认例子存活是200 tick, 按照60fps, 每秒60 tick, 这批例子(一个动画)大约存活200/60 ≈ 3.33秒
   ticks: 200,
   x: 0.5,
   y: 0.5,

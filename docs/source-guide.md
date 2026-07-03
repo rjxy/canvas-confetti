@@ -219,3 +219,4 @@ this.#particles = this.#particles.filter((p) => p.update(this.#context));
 ## 延伸阅读
 
 - `docs/lifecycle-5s.md` — 以"持续 5 秒的效果"为例，逐步拆解从点击到展示的运行时全过程，重点讲 Worker 的工作。
+- `docs/request-animation-frame.md` — 解释 `requestAnimationFrame` 的参数、返回值、取消方式，以及本项目的 60fps 限帧封装。
